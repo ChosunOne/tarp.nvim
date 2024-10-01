@@ -36,7 +36,7 @@ local default_opts = {
 
 -- Private members
 
-M._opts = default_opts
+M._opts = {}
 M._coverage = {}
 M._namespace = nil
 M._cargo_root = nil
@@ -51,6 +51,9 @@ M._cargo_root = nil
 ---@return string|nil
 M._get_cargo_root = function(start)
 	local current_path = nil
+	if start and start.bufnr and start.file then
+		error("Specify either a buffer number or file.")
+	end
 	if start and start.bufnr then
 		current_path = vim.api.nvim_buf_get_name(start.bufnr)
 	elseif start and start.file then
@@ -117,11 +120,55 @@ M.setup = function(opts)
 	M._namespace = vim.api.nvim_create_namespace("")
 end
 
+M.run_tests = function()
+	error("Not yet implemented")
+end
+
 ---Returns information about coverage for the given file, buffer, or project
 ---@param opts? CoverageOpts
----@return Coverage|ProjectCoverage
+---@return ProjectCoverage
 M.coverage = function(opts)
-	error("Not yet implemented")
+	local bufnr = nil
+	local file = nil
+	if opts then
+		bufnr = opts.bufnr or bufnr
+		file = opts.file or file
+	end
+
+	local raw_report = M._read_coverage_report({ bufnr = bufnr, file = file })
+
+	local files = {}
+
+	for _, value in ipairs(raw_report.files) do
+		local uncovered_lines = {}
+
+		for _, trace in ipairs(value.traces) do
+			if trace.stats.Line == 0 then
+				table.insert(uncovered_lines, trace.line)
+			end
+		end
+
+		---@type Coverage
+		local coverage = {
+			covered = value.covered,
+			lines = value.coverable,
+			coverage = value.covered / value.coverable * 100.0,
+			uncovered_lines = uncovered_lines,
+		}
+
+		local file_name = "/" .. table.concat(value.path, "/", 2)
+		files[file_name] = coverage
+	end
+
+	---@type ProjectCoverage
+	local project_coverage = {
+		coverage = raw_report.coverage,
+		covered = raw_report.covered,
+		lines = raw_report.coverable,
+		files = files,
+	}
+
+	return project_coverage
 end
 
 return M

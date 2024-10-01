@@ -3,5 +3,5 @@ verbose = true
 run-types = ["Tests"]
 
 [report]
-out = ["Json"]
+out = ["Json", "Html"]
 output-dir = ".coverage"

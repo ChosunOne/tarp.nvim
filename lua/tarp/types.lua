@@ -47,12 +47,16 @@
 ---@field bufnr? integer
 
 ---@class Coverage
+---@field coverage number
 ---@field covered integer
 ---@field lines integer
 ---@field uncovered_lines integer[]
 
 ---@class ProjectCoverage
+---@field coverage number
+---@field covered integer
 ---@field files table<string, Coverage>
+---@field lines integer
 
 ---@class RawCoverageStats
 ---@field Line integer
