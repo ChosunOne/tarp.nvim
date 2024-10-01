@@ -1,29 +1,25 @@
--- See `:help sign_define` for details
----@class SignDefine
----@field icon? string
----@field linehl? string
----@field numhl? string
----@field text? string
----@field texthl? string
----@field culhl? string
 
 ---@class SignOpts
 ---@field enable? boolean
 ---@field priority? integer
----@field covered? SignDefine
----@field uncovered? SignDefine
----@field partial? SignDefine
+---@field covered? vim.api.keyset.set_extmark
+---@field uncovered? vim.api.keyset.set_extmark
+---@field partial? vim.api.keyset.set_extmark
 
 ---@class CommandOpts
 ---@field enable? boolean
 ---@field test_command? string
 
+---@class Highlight
+---@field name string
+---@field highlight vim.api.keyset.highlight
+
 -- see `:help highlights` for details
 ---@class HighlightOpts
 ---@field enable? boolean
----@field covered? string
----@field uncovered? string
----@field partial? string
+---@field covered? Highlight
+---@field uncovered? Highlight
+---@field partial? Highlight
 
 -- see `:help diagnostic-api` for details
 ---@class DiagnosticOpts
@@ -36,6 +32,7 @@
 ---@field auto_load? boolean
 ---@field config_path? string
 ---@field report_dir? string
+---@field report_name? string
 ---@field features? string[]
 ---@field signs? SignOpts
 ---@field commands? CommandOpts
@@ -51,6 +48,7 @@
 ---@field covered integer
 ---@field lines integer
 ---@field uncovered_lines integer[]
+---@field covered_lines integer[]
 
 ---@class ProjectCoverage
 ---@field coverage number

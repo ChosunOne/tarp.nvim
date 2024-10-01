@@ -1,5 +1,6 @@
 local M = {}
 
+---@type TarpOpts
 local default_opts = {
 	enable = true,
 	auto_load = true,
@@ -8,24 +9,57 @@ local default_opts = {
 	report_dir = nil,
 	report_name = "tarpaulin-report.json",
 
-	signs = {
-		enable = true,
-		priority = 10,
-		covered = { text = "|" },
-		uncovered = { text = "|" },
-		partial = { text = "|" },
-	},
-
 	commands = {
 		enable = true,
 		test_command = "cargo tarpaulin",
 	},
 
+	signs = {
+		enable = true,
+		priority = 10,
+		covered = {
+			sign_hl_group = "TarpCovered",
+			sign_text = "▌",
+			right_gravity = false,
+			spell = false,
+		},
+		uncovered = {
+			sign_hl_group = "TarpUncovered",
+			sign_text = "▌",
+			right_gravity = false,
+			spell = false,
+		},
+		partial = {
+			sign_hl_group = "TarpPartial",
+			sign_text = "▌",
+			right_gravity = false,
+			spell = false,
+		},
+	},
+
 	highlights = {
 		enable = true,
-		covered = "TarpCovered",
-		uncovered = "TarpUncovered",
-		partial = "TarpPartial",
+		covered = {
+			name = "TarpCovered",
+			highlight = {
+				-- bg = "#1d252d",
+				fg = "#1d252d",
+			},
+		},
+		uncovered = {
+			name = "TarpUncovered",
+			highlight = {
+				-- bg = "#261d28",
+				fg = "#261d28",
+			},
+		},
+		partial = {
+			name = "TarpPartial",
+			highlight = {
+				-- bg = "#272592",
+				fg = "#272592",
+			},
+		},
 	},
 
 	diagnostics = {
@@ -36,10 +70,12 @@ local default_opts = {
 
 -- Private members
 
+---@type TarpOpts
 M._opts = {}
+---@type table<string, ProjectCoverage>
 M._coverage = {}
 M._namespace = nil
-M._cargo_root = nil
+M._extmarks = {}
 
 ---@class RootStart
 ---@field bufnr? integer
@@ -78,7 +114,7 @@ end
 
 ---Reads the tarpaulin coverage report
 ---@param start? RootStart
----@return RawCoverageReport
+---@return RawCoverageReport?
 M._read_coverage_report = function(start)
 	local report_dir = M._opts.report_dir
 	if not report_dir then
@@ -86,16 +122,19 @@ M._read_coverage_report = function(start)
 	end
 
 	local report_path = report_dir .. "/" .. M._opts.report_name
-	local f = io.open(report_path, "r")
+	local success, f = pcall(io.open, report_path, "r")
+	if not success then
+		return nil
+	end
 	if not f then
-		error("File not found: " .. report_path)
+		return nil
 	end
 	local report_str = f:read("*a")
 	f:close()
 
 	local success, result = pcall(vim.json.decode, report_str, { object = true, array = true })
 	if not success then
-		error("Failed to parse JSON: " .. result)
+		return nil
 	end
 
 	---@type RawCoverageReport
@@ -103,8 +142,41 @@ M._read_coverage_report = function(start)
 	return report
 end
 
+---@param cargo_root string
+M._show_signs = function(cargo_root)
+	local project_coverage = M._coverage[cargo_root]
+	local bufnr = vim.api.nvim_get_current_buf()
+	local file = vim.api.nvim_buf_get_name(bufnr)
+	local coverage = project_coverage.files[file]
+	if not coverage then
+		return
+	end
+	for _, covered_line in ipairs(coverage.covered_lines) do
+		local id = vim.api.nvim_buf_set_extmark(bufnr, M._namespace, covered_line - 1, 0, M._opts.signs.covered)
+		if not M._extmarks[cargo_root] then
+			M._extmarks[cargo_root] = {}
+		end
+		if not M._extmarks[cargo_root][file] then
+			M._extmarks[cargo_root][file] = {}
+		end
+		table.insert(M._extmarks[cargo_root][file], id)
+	end
+
+	for _, uncovered_line in ipairs(coverage.uncovered_lines) do
+		local id = vim.api.nvim_buf_set_extmark(bufnr, M._namespace, uncovered_line - 1, 0, M._opts.signs.uncovered)
+		if not M._extmarks[cargo_root] then
+			M._extmarks[cargo_root] = {}
+		end
+		if not M._extmarks[cargo_root][file] then
+			M._extmarks[cargo_root][file] = {}
+		end
+		table.insert(M._extmarks[cargo_root][file], id)
+	end
+end
+
 M._clear = function()
 	M._opts = vim.deepcopy(default_opts, true)
+	M._coverage = {}
 end
 
 -- Public API
@@ -118,6 +190,42 @@ M.setup = function(opts)
 		end
 	end
 	M._namespace = vim.api.nvim_create_namespace("")
+	if not M._opts.enable then
+		return
+	end
+	if not M._opts.highlights.enable then
+		return
+	end
+
+	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.covered.name, M._opts.highlights.covered.highlight)
+	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.partial.name, M._opts.highlights.partial.highlight)
+	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.uncovered.name, M._opts.highlights.uncovered.highlight)
+	vim.api.nvim_set_hl_ns(M._namespace)
+
+	if not M._opts.auto_load then
+		return
+	end
+
+	vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
+		pattern = { "*.rs" },
+		callback = function()
+			local cargo_root = M._get_cargo_root()
+			if not cargo_root then
+				return
+			end
+
+			local coverage = M.coverage()
+			if not coverage then
+				return
+			end
+
+			M._coverage[cargo_root] = coverage
+			if not M._opts.signs.enable then
+				return
+			end
+			M._show_signs(cargo_root)
+		end,
+	})
 end
 
 M.run_tests = function()
@@ -126,7 +234,7 @@ end
 
 ---Returns information about coverage for the given file, buffer, or project
 ---@param opts? CoverageOpts
----@return ProjectCoverage
+---@return ProjectCoverage?
 M.coverage = function(opts)
 	local bufnr = nil
 	local file = nil
@@ -136,15 +244,21 @@ M.coverage = function(opts)
 	end
 
 	local raw_report = M._read_coverage_report({ bufnr = bufnr, file = file })
+	if not raw_report then
+		return nil
+	end
 
 	local files = {}
 
 	for _, value in ipairs(raw_report.files) do
 		local uncovered_lines = {}
+		local covered_lines = {}
 
 		for _, trace in ipairs(value.traces) do
 			if trace.stats.Line == 0 then
 				table.insert(uncovered_lines, trace.line)
+			else
+				table.insert(covered_lines, trace.line)
 			end
 		end
 
@@ -154,6 +268,7 @@ M.coverage = function(opts)
 			lines = value.coverable,
 			coverage = value.covered / value.coverable * 100.0,
 			uncovered_lines = uncovered_lines,
+			covered_lines = covered_lines,
 		}
 
 		local file_name = "/" .. table.concat(value.path, "/", 2)
