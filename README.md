@@ -5,22 +5,12 @@ View test coverage in Rust projects
 Tarp is a neovim plugin that displays test coverage directly in your editor via the sign gutter.  
 
 ## Getting started
-Using [vim-plug]()
+Using [vim-plug](https://github.com/junegunn/vim-plug)
 ```
 TODO
 ```
 
-Using [dein]()
-```
-TODO
-```
-
-Using [packer.nvim]()
-```
-TODO
-```
-
-Using [lazy.nvim]()
+Using [lazy.nvim](https://www.lazyvim.org/)
 ```lua
 -- init.lua:
 {
