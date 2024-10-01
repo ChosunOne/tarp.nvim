@@ -5,9 +5,8 @@ local default_opts = {
 	auto_load = true,
 	auto_update = true,
 
-	config_path = nil,
-	report_dir = ".coverage",
-	features = {},
+	report_dir = nil,
+	report_name = "tarpaulin-report.json",
 
 	signs = {
 		enable = true,
@@ -48,7 +47,7 @@ M._cargo_root = nil
 
 ---Finds the first directory containing a `Cargo.toml` file, going up the file tree until it hits root.
 ---If the starting file or buffer is not specified, uses the currently active buffer.
----@param start RootStart
+---@param start? RootStart
 ---@return string|nil
 M._get_cargo_root = function(start)
 	local current_path = nil
@@ -74,50 +73,47 @@ M._get_cargo_root = function(start)
 	end
 end
 
----Finds all the rust files attached to the root directory specified by the presence of a `Cargo.toml`
----file.
----@param start RootStart
----@return string[] | nil
-M._get_rust_files = function(start)
-	local root = M._get_cargo_root(start)
-	if not root then
-		return nil
-	end
-	if string.sub(root, -1, -1) == "/" then
-		root = string.sub(root, 1, -2)
-	end
-	local rust_files = {}
-
-	---@param dir string
-	local function scan_directory(dir)
-		local fs = vim.loop.fs_scandir(dir)
-		if not fs then
-			return
-		end
-
-		while true do
-			local name, type = vim.loop.fs_scandir_next(fs)
-			if not name then
-				break
-			end
-			local full_path = dir .. "/" .. name
-			if type == "directory" then
-				scan_directory(full_path)
-			elseif type == "file" and name:match("%.rs$") then
-				table.insert(rust_files, full_path)
-			end
-		end
+---Reads the tarpaulin coverage report
+---@param start? RootStart
+---@return RawCoverageReport
+M._read_coverage_report = function(start)
+	local report_dir = M._opts.report_dir
+	if not report_dir then
+		report_dir = M._get_cargo_root(start)
 	end
 
-	scan_directory(root)
-	return rust_files
+	local report_path = report_dir .. "/" .. M._opts.report_name
+	local f = io.open(report_path, "r")
+	if not f then
+		error("File not found: " .. report_path)
+	end
+	local report_str = f:read("*a")
+	f:close()
+
+	local success, result = pcall(vim.json.decode, report_str, { object = true, array = true })
+	if not success then
+		error("Failed to parse JSON: " .. result)
+	end
+
+	---@type RawCoverageReport
+	local report = result
+	return report
+end
+
+M._clear = function()
+	M._opts = vim.deepcopy(default_opts, true)
 end
 
 -- Public API
 
 ---@param opts? TarpOpts
 M.setup = function(opts)
-	M._opts = vim.tbl_deep_extend("force", default_opts, opts or {})
+	M._opts = vim.deepcopy(default_opts, true)
+	if opts then
+		for key, value in pairs(opts) do
+			M._opts[key] = value
+		end
+	end
 	M._namespace = vim.api.nvim_create_namespace("")
 end
 

@@ -53,3 +53,26 @@
 
 ---@class ProjectCoverage
 ---@field files table<string, Coverage>
+
+---@class RawCoverageStats
+---@field Line integer
+
+---@class RawCoverageTrace
+---@field address integer[]
+---@field length integer
+---@field line integer
+---@field stats RawCoverageStats
+
+-- The JSON structure which tarpaulin generates
+---@class RawCoverageFile
+---@field content string
+---@field covered integer
+---@field coverable integer
+---@field path string[]
+---@field traces RawCoverageTrace[]
+
+---@class RawCoverageReport
+---@field files RawCoverageFile[]
+---@field coverage number
+---@field covered integer
+---@field coverable integer

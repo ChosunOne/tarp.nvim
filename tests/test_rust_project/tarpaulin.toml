@@ -1,0 +1,7 @@
+[coverage]
+verbose = true
+run-types = ["Tests"]
+
+[report]
+out = ["Json"]
+output-dir = ".coverage"
