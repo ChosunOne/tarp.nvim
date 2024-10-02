@@ -78,3 +78,15 @@
 ---@field coverage number
 ---@field covered integer
 ---@field coverable integer
+
+---@class ExtmarkInfo
+---@field bufnr integer
+---@field id? integer
+---@field kind integer
+---0-indexed
+---@field line? integer
+---0-indexed
+---@field col? integer
+
+---@class Extmarks
+---@field [string] table<string, ExtmarkInfo[]>

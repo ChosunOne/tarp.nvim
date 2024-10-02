@@ -58,38 +58,40 @@ describe("tarp", function()
 	it("can read a tarpaulin coverage report", function()
 		local tarp = require("tarp")
 		local current_path = get_current_path()
-		tarp.setup({ report_dir = current_path .. "/test_rust_project/.coverage" })
-		local report = tarp._read_coverage_report()
-		assert.are.same(report.coverage, 75)
-		assert.are.same(report.coverable, 8)
-		assert.are.same(report.covered, 6)
+		tarp.setup({ report_dir = ".coverage" })
+		local report = tarp._read_coverage_report({ file = current_path .. "/test_rust_project" })
+		assert.are.same(report.coverage, 70)
+		assert.are.same(report.coverable, 10)
+		assert.are.same(report.covered, 7)
 		local file_count = count_array(report.files)
-		assert.are.same(file_count, 1)
-		local file = report.files[1]
-		assert.are.same(file.coverable, 8)
-		assert.are.same(file.covered, 6)
-		local path = "/" .. table.concat(file.path, "/", 2)
-		assert.are.same(current_path .. "/test_rust_project/src/main.rs", path)
-		assert.is_not.Nil(file.content)
-		local trace_1 = file.traces[1]
+		assert.are.same(file_count, 2)
+		local file_1 = report.files[1]
+		assert.are.same(file_1.coverable, 2)
+		assert.are.same(file_1.covered, 1)
+		local path = "/" .. table.concat(file_1.path, "/", 2)
+		assert.are.same(current_path .. "/test_rust_project/src/lib.rs", path)
+		assert.is_not.Nil(file_1.content)
+		local trace_1 = file_1.traces[1]
 		assert.are.same(trace_1.line, 1)
 		assert.are.same(trace_1.length, 1)
-		assert.are.same(trace_1.stats.Line, 3)
+		assert.are.same(trace_1.stats.Line, 2)
 		local address_count = count_array(trace_1.address)
 		assert.are.same(address_count, 3)
-		local trace_2 = file.traces[2]
+		local trace_2 = file_1.traces[2]
 		assert.are.same(trace_2.line, 2)
 		assert.are.same(trace_2.length, 1)
-		assert.are.same(trace_2.stats.Line, 1)
+		assert.are.same(trace_2.stats.Line, 0)
 		address_count = count_array(trace_2.address)
-		assert.are.same(address_count, 1)
-		local trace_3 = file.traces[3]
-		assert.are.same(trace_3.line, 3)
+		assert.are.same(address_count, 2)
+
+		local file_2 = report.files[2]
+		local trace_3 = file_2.traces[1]
+		assert.are.same(trace_3.line, 1)
 		assert.are.same(trace_3.length, 1)
-		assert.are.same(trace_3.stats.Line, 2)
+		assert.are.same(trace_3.stats.Line, 3)
 		address_count = count_array(trace_3.address)
-		assert.are.same(address_count, 1)
-		local trace_4 = file.traces[4]
+		assert.are.same(address_count, 2)
+		local trace_4 = file_2.traces[4]
 		assert.are.same(trace_4.line, 4)
 		assert.are.same(trace_4.length, 1)
 		assert.are.same(trace_4.stats.Line, 1)
@@ -100,21 +102,73 @@ describe("tarp", function()
 	it("can get project coverage", function()
 		local tarp = require("tarp")
 		local current_path = get_current_path()
-		tarp.setup({ report_dir = current_path .. "/test_rust_project/.coverage" })
-		local project_coverage = tarp.coverage()
+		local cargo_root = tarp._get_cargo_root({ file = current_path .. "/test_rust_project" })
+		tarp.setup({ report_dir = ".coverage" })
+		local project_coverage = tarp.coverage({ file = cargo_root })
+		assert.is_not.Nil(project_coverage)
 
-		assert.are.same(project_coverage.coverage, 75)
-		assert.are.same(project_coverage.covered, 6)
-		assert.are.same(project_coverage.lines, 8)
+		assert.are.same(project_coverage.coverage, 70)
+		assert.are.same(project_coverage.covered, 7)
+		assert.are.same(project_coverage.lines, 10)
 		local file_count = count_table(project_coverage.files)
-		assert.are.same(file_count, 1)
+		assert.are.same(file_count, 2)
 
-		local main_path = current_path .. "/test_rust_project/src/main.rs"
+		local main_path = cargo_root .. "src/main.rs"
 		local coverage = project_coverage.files[main_path]
+		assert.is_not.Nil(coverage)
 		assert.are.same(coverage.coverage, 75)
 		assert.are.same(coverage.covered, 6)
 		assert.are.same(coverage.lines, 8)
 		assert.are.same(coverage.uncovered_lines, { 13, 14 })
 		assert.are.same(coverage.covered_lines, { 1, 2, 3, 4, 8, 9 })
+
+		local lib_path = cargo_root .. "src/lib.rs"
+		coverage = project_coverage.files[lib_path]
+		assert.is_not.Nil(coverage)
+		assert.are.same(coverage.coverage, 50)
+		assert.are.same(coverage.covered, 1)
+		assert.are.same(coverage.lines, 2)
+		assert.are.same(coverage.uncovered_lines, { 2 })
+		assert.are.same(coverage.covered_lines, { 1 })
+	end)
+
+	it("can toggle displaying coverage", function()
+		local tarp = require("tarp")
+		local with = require("plenary.context_manager").with
+		local open = require("plenary.context_manager").open
+		local current_path = get_current_path()
+		local cargo_root = current_path .. "/test_rust_project"
+		local file_text = with(open(cargo_root .. "/src/main.rs"), function(reader)
+			return reader:read("*a")
+		end)
+		local paste = function()
+			vim.api.nvim_paste(file_text, true, -1)
+		end
+		tarp.setup({ report_dir = ".coverage" })
+
+		local buffer = vim.api.nvim_create_buf(false, false)
+		vim.api.nvim_buf_set_name(buffer, cargo_root .. "/src/main.rs")
+		vim.api.nvim_buf_call(buffer, paste)
+		vim.api.nvim_buf_call(buffer, tarp._on_enter)
+
+		local og_extmarks = vim.deepcopy(tarp._extmarks)
+
+		vim.api.nvim_buf_call(buffer, tarp.toggle_coverage)
+		assert(tarp._hidden)
+		assert.are.same(tarp._extmarks, {})
+		assert.are_not.same(tarp._hidden_extmarks, {})
+		vim.api.nvim_buf_call(buffer, tarp.toggle_coverage)
+		assert.is_not(tarp._hidden)
+		assert.are.same(tarp._hidden_extmarks, {})
+
+		local extmark_count = count_table(og_extmarks[cargo_root][cargo_root .. "/src/main.rs"])
+		for _, value in ipairs(tarp._extmarks[cargo_root][cargo_root .. "/src/main.rs"]) do
+			value.id = value.id - extmark_count
+		end
+
+		assert.are.same(
+			og_extmarks[cargo_root][cargo_root .. "/src/main.rs"],
+			tarp._extmarks[cargo_root][cargo_root .. "/src/main.rs"]
+		)
 	end)
 end)
