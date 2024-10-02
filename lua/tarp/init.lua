@@ -370,15 +370,6 @@ M.setup = function(opts)
 	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.uncovered.name, M._opts.highlights.uncovered.highlight)
 	vim.api.nvim_set_hl_ns(M._namespace)
 
-	if not M._opts.auto_load then
-		return
-	end
-
-	vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
-		pattern = { "*.rs" },
-		callback = M._on_enter,
-	})
-
 	vim.api.nvim_create_user_command("TarpToggle", function()
 		M.toggle_coverage()
 	end, {
@@ -406,6 +397,26 @@ M.setup = function(opts)
 	end, {
 		desc = "Run tarpaulin tests",
 	})
+
+	if M._opts.auto_load then
+		vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
+			pattern = { "*.rs" },
+			callback = M._on_enter,
+		})
+	end
+
+	if M._opts.auto_update then
+		vim.api.nvim_create_autocmd({ "BufWritePost" }, {
+			pattern = { "*.rs" },
+			callback = function ()
+				local cargo_root = M._get_cargo_root()
+				if not cargo_root then
+					return
+				end
+				M.run_tests(cargo_root)
+			end
+		})
+	end
 end
 
 ---Shows any hidden signs

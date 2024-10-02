@@ -36,6 +36,7 @@
 ---@class TarpOpts
 ---@field enable? boolean
 ---@field auto_load? boolean
+---@field auto_update? boolean
 ---@field config_path? string
 ---@field report_dir? string
 ---@field report_name? string
