@@ -1,0 +1,12 @@
+Coverage	tarp.txt	/*Coverage*
+ProjectCoverage	tarp.txt	/*ProjectCoverage*
+TarpTest	tarp.txt	/*TarpTest*
+TarpToggle	tarp.txt	/*TarpToggle*
+tarp-api	tarp.txt	/*tarp-api*
+tarp-commands	tarp.txt	/*tarp-commands*
+tarp-types	tarp.txt	/*tarp-types*
+tarp.coverage()	tarp.txt	/*tarp.coverage()*
+tarp.nvim	tarp.txt	/*tarp.nvim*
+tarp.run_tests()	tarp.txt	/*tarp.run_tests()*
+tarp.setup()	tarp.txt	/*tarp.setup()*
+tarp.toggle_coverage()	tarp.txt	/*tarp.toggle_coverage()*

@@ -373,12 +373,17 @@ M.setup = function(opts)
 
 	vim.api.nvim_create_user_command("TarpTest", function()
 		local cargo_root = M._get_cargo_root()
+		if not cargo_root then
+			return
+		end
 		M.run_tests(cargo_root)
 	end, {
 		desc = "Run tarpaulin tests",
 	})
 end
 
+---Runs tests at the specified `cargo_root`
+---@param cargo_root string
 M.run_tests = function(cargo_root)
 	local bufnr = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_set_option_value("buftype", "nofile", { buf = bufnr })

@@ -1,0 +1,126 @@
+==================================================================
+                                                                     *tarp.nvim*
+INTRODUCTION
+
+This plugin is designed to improve your experience in working with 
+`tarpaulin` to generate code coverage reports for your Rust project.
+
+PUBLIC API
+                                                       *tarp-api* *tarp.setup()*
+tarp.setup({opts})
+
+  Setup the plugin and override any default options with the {opts}
+  specified.  In addition to setting default options, it also defines
+  the following user commands: |TarpToggle| and |TarpTest|.  It will
+  also register a listener for |BufEnter| and |BufWinEnter| events for entering 
+  files matching the `*.rs` pattern.
+
+  Parameters: ~
+    • {opts}    Optional parameters.
+      • enable : Whether the plugin should be enabled.
+      • auto_load : Whether the plugin should attempt to
+        automatically load coverage information.
+      • auto_update : Whether the plugin should attempt to
+        run tests and update coverage information when a
+        file is saved.
+      • report_dir : The directory under the cargo root that
+        should be searched for a coverage report.
+      • report_name : The file name of the coverage report.
+      • commands : The command that should be run to
+        generate coverage reports.
+          • enable : Whether commands should be enabled.
+          • test_command : The literal command to run.
+      • signs : denotes the settings for placing |extmark|s.
+        See |nvim_buf_set_extmark()| for more details.  The
+        plugin defines three signs, `TarpCovered`,
+        `TarpPartial`, and `TarpUncovered`.
+      • highlights : Denotes the settings for the highlight
+        groups for the plugin.  See |highlight-groups| for
+        details.
+      • diagnostics : Denotes the settings for displaying
+        |diagnostic-api| information pertaining to the
+        plugin 
+
+                                                            *tarp.run_tests()*
+tarp.run_tests({cargo_root})
+
+  Runs the `test_command` at {cargo_root} to generate new coverage
+  reports.  Afterward it will attempt to reload coverage information
+  for displaying in the sign gutter.
+
+  Parameters: ~
+    • {cargo_root} : The root directory to run tests to generate
+      coverage reports
+
+                                                       *tarp.coverage()*
+tarp.coverage({opts})
+
+  Reads coverage reports depending on the {opts} supplied, and returns 
+  a |ProjectCoverage| table with detailed coverage information.
+
+  Parameters: ~
+    • {opts} : A table containing the following:
+      • bufnr : The buffer to use to find the `cargo_root`.
+      • file : The file path to use to find the
+        `cargo_root`.
+      • NOTE: Either `bufnr` or `file` should be supplied,
+        but not both.  You may also choose to supply
+        nothing and the current active buffer will be
+        used.
+
+  Return: ~
+    map of |ProjectCoverage| or `nil`.
+
+                                                      *tarp.toggle_coverage()*
+tarp.toggle_coverage()
+
+  Toggles the visibility of coverage in the sign gutter.
+
+============================================================================  
+TYPES
+                                                                  *tarp-types*
+
+The following are the primary types returned via the |tarp-api|. 
+
+                                                             *ProjectCoverage*
+ProjectCoverage
+
+  Fields: ~
+    • coverage : number, the percentage of coverable lines covered by testing.
+      in the entire project.
+    • covered : integer, the total number of lines covered in the project.
+    • lines : integer, the total number of coverable lines in the project.
+    • files : table<string, |Coverage|>, a listing of file paths with their 
+      detailed coverage information.
+
+                                                                    *Coverage*
+Coverage
+  
+  Fields: ~
+    • coverage : number, the percentage of coverable lines covered by testing
+      in the file.
+    • covered : integer, the total number of lines covered in the file.
+    • lines : integer, the total number of coverable lines in the file.
+    • uncovered_lines : integer[], a list of lines not covered in the file
+      during testing.
+    • covered_lines : integer[], a list of lines covered in the file during
+      testing.
+
+=============================================================================
+COMMANDS
+                                                               *tarp-commands*
+
+The following commands are provided for convenience.
+
+                                                                    *TarpTest*
+TarpTest
+
+  Runs the `test_command` specified in |tarp.setup()| to generate new coverage
+  reports.
+
+                                                                  *TarpToggle*
+TarpToggle
+  
+  Toggles visibility of coverage within the sign gutter.
+
+vim:tw=78:ts=8:ft=help:norl:
