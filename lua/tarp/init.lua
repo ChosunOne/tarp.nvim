@@ -83,6 +83,14 @@ local default_opts = {
 	},
 }
 
+local function split_by_newline (str)
+	local lines = {}
+	for line in str:gmatch("[^\r\n]+") do
+		table.insert(lines, line)
+	end
+	return lines
+end
+
 -- Private members
 
 ---@type TarpOpts
@@ -99,18 +107,12 @@ M._notification = {
 	buf = nil,
 	window = nil,
 }
+M._throbber_frame = 1
+M._is_throbbing = false
+M._timer = nil
 
-local split_by_newline = function (str)
-	local lines = {}
-	for line in str:gmatch("[^\r\n]+") do
-		table.insert(lines, line)
-	end
-	return lines
-end
+local throbber = { '⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏' }
 
----@class RootStart
----@field bufnr? integer
----@field file? string
 
 ---Finds the first directory containing a `Cargo.toml` file, going up the file tree until it hits root.
 ---If the starting file or buffer is not specified, uses the currently active buffer.
@@ -220,6 +222,8 @@ M._clear = function(clear_opts)
 	M._extmarks = {}
 	M._hidden = false
 	M._test_job = nil
+	M._is_throbbing = nil
+	M._timer = nil
 end
 
 ---Converts a highlight group into an extmark kind
@@ -317,11 +321,60 @@ M._create_notification_window = function ()
 	end
 end
 
+M._update_throbber = function()
+	if not M._test_job then
+		M._notification.lines[M._opts.notifications.max_lines] = ""
+		return
+	end
+
+	local throbber_frame_offset = #throbber[M._throbber_frame] + 1
+	local new_frame = M._notification.lines[M._opts.notifications.max_lines]:sub(1, -throbber_frame_offset) .. throbber[M._throbber_frame]
+	M._notification.lines[M._opts.notifications.max_lines] = new_frame
+
+	M._throbber_frame = (M._throbber_frame % #throbber) + 1
+	vim.schedule(function ()
+		vim.api.nvim_buf_set_lines(M._notification.buf, 0, -1, true, M._notification.lines)
+		for i = 0, #M._notification.lines - 1 do
+			vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, "WarningMsg", i, 0, -1)
+		end
+	end)
+end
+
+M._start_throbber = function (message)
+	if M._is_throbbing then
+		return
+	end
+
+	M._throbber_frame = 1
+
+	local line = message .. " " .. throbber[M._throbber_frame]
+	M._notification.lines[M._opts.notifications.max_lines] = line
+
+	M._timer = vim.loop.new_timer()
+	M._timer:start(0, 100, vim.schedule_wrap(M._update_throbber))
+	M._is_throbbing = true
+end
+
+M._stop_throbber = function ()
+	if not M._is_throbbing then
+		return
+	end
+
+	M._is_throbbing = false
+
+	if M._timer then
+		M._timer:stop()
+		M._timer:close()
+		M._timer = nil
+	end
+
+	M._notification.lines[M._opts.notifications.max_lines] = ""
+end
 
 ---@param message string
 M._print_notification_message = function (message)
 	vim.schedule(function ()
-		table.insert(M._notification.lines, message)
+		table.insert(M._notification.lines, M._opts.notifications.max_lines - 1, message)
 
 		if #M._notification.lines > M._opts.notifications.max_lines then
 			table.remove(M._notification.lines, 1)
@@ -501,7 +554,7 @@ M.run_tests = function(cargo_root)
 	local on_output = function (_, data) end
 	if M._opts.notifications.enable then
 		M._create_notification_window()
-		M._print_notification_message(string.format("Running %s", table.concat(M._opts.commands.test_command, " ")))
+		M._start_throbber(string.format("Running %s", table.concat(M._opts.commands.test_command, " ")))
 
 		on_output = function (_, data)
 			if data then
@@ -524,6 +577,7 @@ M.run_tests = function(cargo_root)
 					-- clear output for final result table
 					M._print_notification_message("")
 				end
+				M._stop_throbber()
 				M._print_notification_message(string.format("Testing completed with code: %d", res.code))
 				M._print_notification_message(string.format("Covered lines:   %d", M._coverage[cargo_root].covered))
 				M._print_notification_message(string.format("Coverable lines: %d", M._coverage[cargo_root].lines))

@@ -1,3 +1,6 @@
+---@class RootStart
+---@field bufnr? integer
+---@field file? string
 
 ---@class SignOpts
 ---@field enable? boolean
