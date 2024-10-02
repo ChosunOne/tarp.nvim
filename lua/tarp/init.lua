@@ -578,7 +578,11 @@ M.run_tests = function(cargo_root)
 					M._print_notification_message("")
 				end
 				M._stop_throbber()
-				M._print_notification_message(string.format("Testing completed with code: %d", res.code))
+				if res.code == 0 then
+					M._print_notification_message("Testing successful ✓")
+				else 
+					M._print_notification_message("Testing failed ☓")
+				end
 				M._print_notification_message(string.format("Covered lines:   %d", M._coverage[cargo_root].covered))
 				M._print_notification_message(string.format("Coverable lines: %d", M._coverage[cargo_root].lines))
 				M._print_notification_message(string.format("Coverage:        %f", M._coverage[cargo_root].coverage))
