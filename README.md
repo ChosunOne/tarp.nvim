@@ -121,6 +121,7 @@ require("tarp").setup({
 
 ## Usage
 There are four user commands:
+- `TarpReload`: Reloads coverage information
 - `TarpToggle`: Toggles visibility of coverage information
 - `TarpTest`: Runs the specified testing command (defaulting to `cargo tarpaulin`) to collect updated coverage information.
 - `TarpShow`: Shows any loaded coverage information in the sign gutter that was previously hidden.
@@ -131,6 +132,7 @@ There are four user commands:
 ## API Usage
 Tarp also exposes additional information via the public API:
 - `tarp.coverage`: Reports information for each file in a cargo project for which coverage information exsists.  See [types.lua](./lua/tarp/types.lua) for more details
+- `tarp.reload_coverage`: Reloads the coverage data
 - `tarp.toggle_coverage`: Toggles visibility of Tarp sign extmarks
 - `tarp.run_tests`: Runs the specified testing command to generate updated coverage information 
 - `tarp.show_coverage`: Shows Tarp sign extmarks

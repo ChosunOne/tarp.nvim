@@ -11,9 +11,8 @@ tarp.setup({opts})
 
   Setup the plugin and override any default options with the {opts}
   specified.  In addition to setting default options, it also defines
-  the following user commands: |TarpToggle| and |TarpTest|.  It will
-  also register a listener for |BufEnter| and |BufWinEnter| events for entering 
-  files matching the `*.rs` pattern.
+  |tarp-commands|. It will also register a listener for |BufEnter| 
+  and |BufWinEnter| events for entering files matching the `*.rs` pattern.
 
   Parameters: ~
     • {opts}    Optional parameters.
@@ -142,5 +141,20 @@ TarpTest
 TarpToggle
   
   Toggles visibility of coverage within the sign gutter.
+
+                                                                    *TarpShow*
+TarpShow
+
+  Shows previously hidden coverage information in the sign gutter.
+
+                                                                    *TarpHide*
+TarpHide
+
+  Hides currently visible coverage information.
+
+                                                                  *TarpReload*
+TarpReload
+
+  Reloads coverage data for the current buffer
 
 vim:tw=78:ts=8:ft=help:norl:

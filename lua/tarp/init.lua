@@ -253,7 +253,12 @@ M._get_extmark_opts = function(kind)
 	end
 end
 
-M._on_enter = function()
+M._load_coverage = function()
+	-- Delete all the existing extmarks
+	M.hide_coverage()
+	M._extmarks = {}
+	M._coverage = {}
+
 	local cargo_root = M._get_cargo_root()
 	if not cargo_root then
 		return
@@ -423,6 +428,12 @@ M.setup = function(opts)
 	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.uncovered.name, M._opts.highlights.uncovered.highlight)
 	vim.api.nvim_set_hl_ns(M._namespace)
 
+	vim.api.nvim_create_user_command("TarpReload", function ()
+		M.reload_coverage()
+	end, {
+			desc = "Reload coverage data"
+		})
+
 	vim.api.nvim_create_user_command("TarpToggle", function()
 		M.toggle_coverage()
 	end, {
@@ -454,7 +465,7 @@ M.setup = function(opts)
 	if M._opts.auto_load then
 		vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
 			pattern = { "*.rs" },
-			callback = M._on_enter,
+			callback = M._load_coverage,
 		})
 	end
 
@@ -470,6 +481,11 @@ M.setup = function(opts)
 			end
 		})
 	end
+end
+
+---Reloads coverage data for the current buffer
+M.reload_coverage = function ()
+	M._load_coverage()
 end
 
 ---Shows any hidden signs
@@ -580,7 +596,7 @@ M.run_tests = function(cargo_root)
 				M._stop_throbber()
 				if res.code == 0 then
 					M._print_notification_message("Testing successful ✓")
-				else 
+				else
 					M._print_notification_message("Testing failed ☓")
 				end
 				M._print_notification_message(string.format("Covered lines:   %d", M._coverage[cargo_root].covered))
