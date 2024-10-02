@@ -525,9 +525,9 @@ M.run_tests = function(cargo_root)
 					M._print_notification_message("")
 				end
 				M._print_notification_message(string.format("Testing completed with code: %d", res.code))
-				M._print_notification_message(string.format("Covered lines:\t%d", M._coverage[cargo_root].covered))
-				M._print_notification_message(string.format("Coverable lines:\t%d", M._coverage[cargo_root].lines))
-				M._print_notification_message(string.format("Coverage:\t%f", M._coverage[cargo_root].coverage))
+				M._print_notification_message(string.format("Covered lines:   %d", M._coverage[cargo_root].covered))
+				M._print_notification_message(string.format("Coverable lines: %d", M._coverage[cargo_root].lines))
+				M._print_notification_message(string.format("Coverage:        %f", M._coverage[cargo_root].coverage))
 				M._expire_notification_window(M._opts.notifications.timeout)
 			end
 			vim.schedule(function ()
