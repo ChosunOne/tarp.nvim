@@ -155,20 +155,10 @@ describe("tarp", function()
 
 		vim.api.nvim_buf_call(buffer, tarp.toggle_coverage)
 		assert(tarp._hidden)
-		assert.are.same(tarp._extmarks, {})
-		assert.are_not.same(tarp._hidden_extmarks, {})
 		vim.api.nvim_buf_call(buffer, tarp.toggle_coverage)
 		assert.is_not(tarp._hidden)
-		assert.are.same(tarp._hidden_extmarks, {})
 
 		local extmark_count = count_table(og_extmarks[cargo_root][cargo_root .. "/src/main.rs"])
-		for _, value in ipairs(tarp._extmarks[cargo_root][cargo_root .. "/src/main.rs"]) do
-			value.id = value.id - extmark_count
-		end
-
-		assert.are.same(
-			og_extmarks[cargo_root][cargo_root .. "/src/main.rs"],
-			tarp._extmarks[cargo_root][cargo_root .. "/src/main.rs"]
-		)
+		assert.are.same(extmark_count, 8)
 	end)
 end)

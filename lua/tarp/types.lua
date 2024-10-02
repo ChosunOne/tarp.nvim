@@ -81,6 +81,7 @@
 
 ---@class ExtmarkInfo
 ---@field bufnr integer
+---If there is no id, then the Extmark is hidden
 ---@field id? integer
 ---@field kind integer
 ---0-indexed

@@ -85,8 +85,6 @@ M._coverage = {}
 M._namespace = nil
 ---@type Extmarks
 M._extmarks = {}
----@type Extmarks
-M._hidden_extmarks = {}
 M._hidden = false
 
 ---@class RootStart
@@ -177,7 +175,7 @@ M._init_signs = function(cargo_root)
 		if not M._extmarks[cargo_root][file] then
 			M._extmarks[cargo_root][file] = {}
 		end
-		table.insert(M._extmarks[cargo_root][file], { id = id, bufnr = bufnr, kind = ExtmarkKind.COVERED })
+		M._insert_extmark(cargo_root, file, { id = id, bufnr = bufnr, kind = ExtmarkKind.COVERED })
 	end
 
 	for _, uncovered_line in ipairs(coverage.uncovered_lines) do
@@ -188,7 +186,7 @@ M._init_signs = function(cargo_root)
 		if not M._extmarks[cargo_root][file] then
 			M._extmarks[cargo_root][file] = {}
 		end
-		table.insert(M._extmarks[cargo_root][file], { id = id, bufnr = bufnr, kind = ExtmarkKind.UNCOVERED })
+		M._insert_extmark(cargo_root, file, { id = id, bufnr = bufnr, kind = ExtmarkKind.UNCOVERED })
 	end
 end
 
@@ -326,14 +324,18 @@ end
 M.show_coverage = function()
 	-- Re-insert existing extmarks
 	for cargo_root, _ in pairs(M._coverage) do
-		if not M._hidden_extmarks[cargo_root] then
-			M._hidden_extmarks[cargo_root] = {}
+		if not M._extmarks[cargo_root] then
+			M._extmarks[cargo_root] = {}
 		end
-		for file, _ in pairs(M._hidden_extmarks[cargo_root]) do
-			if not M._hidden_extmarks[cargo_root][file] then
-				M._hidden_extmarks[cargo_root][file] = {}
+		for file, _ in pairs(M._extmarks[cargo_root]) do
+			if not M._extmarks[cargo_root][file] then
+				M._extmarks[cargo_root][file] = {}
 			end
-			for _, extmark in ipairs(M._hidden_extmarks[cargo_root][file]) do
+			for _, extmark in ipairs(M._extmarks[cargo_root][file]) do
+				if extmark.id then
+					-- Extmark is already visible
+					goto continue
+				end
 				local opts = M._get_extmark_opts(extmark.kind)
 				if not opts then
 					goto continue
@@ -344,7 +346,6 @@ M.show_coverage = function()
 			end
 		end
 	end
-	M._hidden_extmarks = {}
 	M._hidden = false
 end
 
@@ -360,41 +361,33 @@ M.hide_coverage = function()
 				M._extmarks[cargo_root][file] = {}
 			end
 			for _, extmark in ipairs(M._extmarks[cargo_root][file]) do
+				if not extmark.id then
+					-- Already hidden
+					goto continue
+				end
 				local extmark_info =
 					vim.api.nvim_buf_get_extmark_by_id(extmark.bufnr, M._namespace, extmark.id, { details = true })
 				if not extmark_info then
 					goto continue
 				end
+
 				local line = extmark_info[1]
 				local col = extmark_info[2]
 				local details = extmark_info[3]
+
 				if not details then
 					goto continue
 				end
+
 				vim.api.nvim_buf_del_extmark(extmark.bufnr, M._namespace, extmark.id)
 
-				if not M._hidden_extmarks[cargo_root] then
-					M._hidden_extmarks[cargo_root] = {}
-				end
-				if not M._hidden_extmarks[cargo_root][file] then
-					M._hidden_extmarks[cargo_root][file] = {}
-				end
-
-				local kind = M._extmark_kind(details.sign_hl_group)
-				if not kind then
-					goto continue
-				end
-
-				table.insert(
-					M._hidden_extmarks[cargo_root][file],
-					{ bufnr = extmark.bufnr, line = line, col = col, kind = kind }
-				)
+				extmark.id = nil
+				extmark.line = line
+				extmark.col = col
 				::continue::
 			end
-			M._extmarks[cargo_root][file] = {}
 		end
 	end
-	M._extmarks = {}
 	M._hidden = true
 end
 
