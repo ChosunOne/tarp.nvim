@@ -112,9 +112,11 @@ require("tarp").setup({
 ```
 
 ## Usage
-There are two user commands:
+There are four user commands:
 - `TarpToggle`: Toggles visibility of coverage information
 - `TarpTest`: Runs the specified testing command (defaulting to `cargo tarpaulin`) to collect updated coverage information.
+- `TarpShow`: Shows any loaded coverage information in the sign gutter that was previously hidden.
+- `TarpHide`: Hides any loaded coverage information in the sign gutter.
 
 `tarpaulin` should be configured to output `JSON` reports, and the `report_dir` and `report_name` for Tarp should be configured to match the generated report artifact.  You can see more information on how to configure the format and location of `tarpaulin` reports in their [documentation](https://github.com/xd009642/tarpaulin?tab=readme-ov-file#tarpaulin).
 
@@ -123,3 +125,5 @@ Tarp also exposes additional information via the public API:
 - `tarp.coverage`: Reports information for each file in a cargo project for which coverage information exsists.  See [types.lua](./lua/tarp/types.lua) for more details
 - `tarp.toggle_coverage`: Toggles visibility of Tarp sign extmarks
 - `tarp.run_tests`: Runs the specified testing command to generate updated coverage information 
+- `tarp.show_coverage`: Shows Tarp sign extmarks
+- `tarp.hide_coverage`: Hides Tarp sign extmarks

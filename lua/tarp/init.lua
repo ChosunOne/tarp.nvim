@@ -261,7 +261,69 @@ M._insert_extmark = function(cargo_root, file, extmark)
 	table.insert(M._extmarks[cargo_root][file], extmark)
 end
 
-M._show_signs = function()
+-- Public API
+
+---@param opts? TarpOpts
+M.setup = function(opts)
+	M._opts = vim.deepcopy(default_opts, true)
+	if opts then
+		for key, value in pairs(opts) do
+			M._opts[key] = value
+		end
+	end
+	M._namespace = vim.api.nvim_create_namespace("")
+	if not M._opts.enable then
+		return
+	end
+	if not M._opts.highlights.enable then
+		return
+	end
+
+	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.covered.name, M._opts.highlights.covered.highlight)
+	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.partial.name, M._opts.highlights.partial.highlight)
+	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.uncovered.name, M._opts.highlights.uncovered.highlight)
+	vim.api.nvim_set_hl_ns(M._namespace)
+
+	if not M._opts.auto_load then
+		return
+	end
+
+	vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
+		pattern = { "*.rs" },
+		callback = M._on_enter,
+	})
+
+	vim.api.nvim_create_user_command("TarpToggle", function()
+		M.toggle_coverage()
+	end, {
+		desc = "Toggle coverage visualization",
+	})
+
+	vim.api.nvim_create_user_command("TarpShow", function()
+		M.show_coverage()
+	end, {
+		desc = "Show coverage visualization",
+	})
+
+	vim.api.nvim_create_user_command("TarpHide", function()
+		M.hide_coverage()
+	end, {
+		desc = "Hide coverage visualization",
+	})
+
+	vim.api.nvim_create_user_command("TarpTest", function()
+		local cargo_root = M._get_cargo_root()
+		if not cargo_root then
+			return
+		end
+		M.run_tests(cargo_root)
+	end, {
+		desc = "Run tarpaulin tests",
+	})
+end
+
+---Shows any hidden signs
+M.show_coverage = function()
 	-- Re-insert existing extmarks
 	for cargo_root, _ in pairs(M._coverage) do
 		if not M._hidden_extmarks[cargo_root] then
@@ -283,9 +345,11 @@ M._show_signs = function()
 		end
 	end
 	M._hidden_extmarks = {}
+	M._hidden = false
 end
 
-M._hide_signs = function()
+---Hides any visible signs
+M.hide_coverage = function()
 	-- Remove existing extmarks
 	for cargo_root, _ in pairs(M._coverage) do
 		if not M._extmarks[cargo_root] then
@@ -331,55 +395,7 @@ M._hide_signs = function()
 		end
 	end
 	M._extmarks = {}
-end
-
--- Public API
-
----@param opts? TarpOpts
-M.setup = function(opts)
-	M._opts = vim.deepcopy(default_opts, true)
-	if opts then
-		for key, value in pairs(opts) do
-			M._opts[key] = value
-		end
-	end
-	M._namespace = vim.api.nvim_create_namespace("")
-	if not M._opts.enable then
-		return
-	end
-	if not M._opts.highlights.enable then
-		return
-	end
-
-	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.covered.name, M._opts.highlights.covered.highlight)
-	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.partial.name, M._opts.highlights.partial.highlight)
-	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.uncovered.name, M._opts.highlights.uncovered.highlight)
-	vim.api.nvim_set_hl_ns(M._namespace)
-
-	if not M._opts.auto_load then
-		return
-	end
-
-	vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
-		pattern = { "*.rs" },
-		callback = M._on_enter,
-	})
-
-	vim.api.nvim_create_user_command("TarpToggle", function()
-		M.toggle_coverage()
-	end, {
-		desc = "Toggle coverage visualization",
-	})
-
-	vim.api.nvim_create_user_command("TarpTest", function()
-		local cargo_root = M._get_cargo_root()
-		if not cargo_root then
-			return
-		end
-		M.run_tests(cargo_root)
-	end, {
-		desc = "Run tarpaulin tests",
-	})
+	M._hidden = true
 end
 
 ---Runs tests at the specified `cargo_root`
@@ -486,12 +502,10 @@ end
 
 M.toggle_coverage = function()
 	if not M._hidden then
-		M._hide_signs()
+		M.hide_coverage()
 	else
-		M._show_signs()
+		M.show_coverage()
 	end
-
-	M._hidden = not M._hidden
 end
 
 return M

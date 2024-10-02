@@ -76,6 +76,16 @@ tarp.toggle_coverage()
 
   Toggles the visibility of coverage in the sign gutter.
 
+                                                        *tarp.show_coverage()*
+tarp.show_coverage()
+
+  Shows any hidden coverage signs in the sign gutter.
+
+                                                        *tarp.hide_coverage()*
+tarp.hide_coverage()
+
+  Hides any visiable coverage signs in the sign gutter.
+
 ============================================================================  
 TYPES
                                                                   *tarp-types*

@@ -44,7 +44,7 @@ describe("tarp", function()
 		local tarp = require("tarp")
 		tarp.setup({ enable = false })
 		assert.are.same(false, tarp._opts.enable)
-		tarp._clear()
+		tarp._clear(true)
 		assert.are.same(true, tarp._opts.enable)
 	end)
 
