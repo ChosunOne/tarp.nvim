@@ -68,6 +68,12 @@ local default_opts = {
 				fg = "#272592",
 			},
 		},
+		notifications = {
+			name = "TarpNotifications",
+			highlight = {
+				fg = "#f9e2af"
+			}
+		}
 	},
 
 	notifications = {
@@ -317,7 +323,7 @@ M._create_notification_window = function ()
 
 	local win = vim.api.nvim_open_win(buf, false, opts)
 	vim.api.nvim_set_option_value("winblend", 100, { win = win })
-	vim.api.nvim_buf_add_highlight(buf, -1, "WarningMsg", 0, 0, -1)
+	vim.api.nvim_buf_add_highlight(buf, -1, M._opts.highlights.notifications.name, 0, 0, -1)
 
 	M._notification.window = win
 	M._notification.buf = buf
@@ -426,6 +432,7 @@ M.setup = function(opts)
 	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.covered.name, M._opts.highlights.covered.highlight)
 	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.partial.name, M._opts.highlights.partial.highlight)
 	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.uncovered.name, M._opts.highlights.uncovered.highlight)
+	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.notifications.name, M._opts.highlights.notifications.highlight)
 	vim.api.nvim_set_hl_ns(M._namespace)
 
 	vim.api.nvim_create_user_command("TarpReload", function ()

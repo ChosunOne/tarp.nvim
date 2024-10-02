@@ -93,6 +93,12 @@ The style and functionality of Tarp can be customized to suit your needs.  Below
 				fg = "#272592",
 			},
 		},
+		notifications = {
+			name = "TarpNotifications",
+			highlight = {
+				fg = "#f9e2af"
+			}
+		}
 	},
 
 	notifications = {

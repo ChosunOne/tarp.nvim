@@ -23,6 +23,7 @@
 ---@field covered? Highlight
 ---@field uncovered? Highlight
 ---@field partial? Highlight
+---@field notifications? Highlight
 
 -- see `:help diagnostic-api` for details
 ---@class DiagnosticOpts

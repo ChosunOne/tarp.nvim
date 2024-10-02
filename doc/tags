@@ -1,12 +1,17 @@
 Coverage	tarp.txt	/*Coverage*
 ProjectCoverage	tarp.txt	/*ProjectCoverage*
+TarpHide	tarp.txt	/*TarpHide*
+TarpReload	tarp.txt	/*TarpReload*
+TarpShow	tarp.txt	/*TarpShow*
 TarpTest	tarp.txt	/*TarpTest*
 TarpToggle	tarp.txt	/*TarpToggle*
 tarp-api	tarp.txt	/*tarp-api*
 tarp-commands	tarp.txt	/*tarp-commands*
 tarp-types	tarp.txt	/*tarp-types*
 tarp.coverage()	tarp.txt	/*tarp.coverage()*
+tarp.hide_coverage()	tarp.txt	/*tarp.hide_coverage()*
 tarp.nvim	tarp.txt	/*tarp.nvim*
 tarp.run_tests()	tarp.txt	/*tarp.run_tests()*
 tarp.setup()	tarp.txt	/*tarp.setup()*
+tarp.show_coverage()	tarp.txt	/*tarp.show_coverage()*
 tarp.toggle_coverage()	tarp.txt	/*tarp.toggle_coverage()*
