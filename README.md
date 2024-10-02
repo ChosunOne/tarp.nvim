@@ -120,7 +120,7 @@ require("tarp").setup({
 ```
 
 ## Usage
-There are four user commands:
+These are the following user commands:
 - `TarpReload`: Reloads coverage information
 - `TarpToggle`: Toggles visibility of coverage information
 - `TarpTest`: Runs the specified testing command (defaulting to `cargo tarpaulin`) to collect updated coverage information.
