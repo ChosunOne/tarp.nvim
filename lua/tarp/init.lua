@@ -485,6 +485,7 @@ M.run_tests = function(cargo_root)
 	local on_output = function (_, data) end
 	if M._opts.notifications.enable then
 		M._create_notification_window()
+		M._print_notification_message(string.format("Running %s", M._opts.commands.test_command))
 
 		on_output = function (_, data)
 			if data then
