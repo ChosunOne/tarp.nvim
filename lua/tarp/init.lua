@@ -17,7 +17,7 @@ local default_opts = {
 
 	commands = {
 		enable = true,
-		test_command = "cargo tarpaulin",
+		test_command = {"cargo", "tarpaulin"},
 	},
 
 	signs = {
@@ -219,6 +219,7 @@ M._clear = function(clear_opts)
 	M._coverage = {}
 	M._extmarks = {}
 	M._hidden = false
+	M._test_job = nil
 end
 
 ---Converts a highlight group into an extmark kind
@@ -319,17 +320,18 @@ end
 
 ---@param message string
 M._print_notification_message = function (message)
-	table.insert(M._notification.lines, message)
+	vim.schedule(function ()
+		table.insert(M._notification.lines, message)
 
-	if #M._notification.lines > M._opts.notifications.max_lines then
-		table.remove(M._notification.lines, 1)
-	end
+		if #M._notification.lines > M._opts.notifications.max_lines then
+			table.remove(M._notification.lines, 1)
+		end
+		vim.api.nvim_buf_set_lines(M._notification.buf, 0, -1, true, M._notification.lines)
+		for i = 0, #M._notification.lines - 1 do
+			vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, "WarningMsg", i, 0, -1)
+		end
+	end)
 
-	vim.api.nvim_buf_set_lines(M._notification.buf, 0, -1, true, M._notification.lines)
-
-	for i = 0, #M._notification.lines - 1 do
-		vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, "WarningMsg", i, 0, -1)
-	end
 end
 
 ---sets the expiration for the notification window
@@ -493,36 +495,42 @@ end
 ---Runs tests at the specified `cargo_root`
 ---@param cargo_root string
 M.run_tests = function(cargo_root)
+	if M._test_job then
+		return
+	end
 	local on_output = function (_, data) end
 	if M._opts.notifications.enable then
 		M._create_notification_window()
-		M._print_notification_message(string.format("Running %s", M._opts.commands.test_command))
+		M._print_notification_message(string.format("Running %s", table.concat(M._opts.commands.test_command, " ")))
 
 		on_output = function (_, data)
 			if data then
-				for _, large_message in ipairs(data) do
-					local lines = split_by_newline(large_message)
-					for _, message in ipairs(lines) do
-						if string.sub(message, 1, 2) == "||" then
-							M._print_notification_message(message)
-						end
-					end
+				local lines = split_by_newline(data)
+				for _, message in ipairs(lines) do
+					M._print_notification_message(string.sub(message, 0, M._opts.notifications.max_width))
 				end
 			end
 		end
 	end
 
-	vim.fn.jobstart(M._opts.commands.test_command, {
-		stdout_buffered = true,
-		stderr_buffered = true,
-		on_stdout = on_output,
-		on_stderr = on_output,
-		on_exit = function(_, exit_code)
-			vim.schedule(function()
-				if M._opts.notifications.enable then
-					M._print_notification_message(string.format("Testing completed with code: %d", exit_code))
-					M._expire_notification_window(M._opts.notifications.timeout)
+	M._test_job = vim.system(M._opts.commands.test_command, {
+		stdout = on_output,
+		stderr = on_output,
+		cwd = cargo_root,
+	},
+		function(res)
+			if M._opts.notifications.enable then
+				for _ = 1, M._opts.notifications.max_lines do
+					-- clear output for final result table
+					M._print_notification_message("")
 				end
+				M._print_notification_message(string.format("Testing completed with code: %d", res.code))
+				M._print_notification_message(string.format("Covered lines:\t%d", M._coverage[cargo_root].covered))
+				M._print_notification_message(string.format("Coverable lines:\t%d", M._coverage[cargo_root].lines))
+				M._print_notification_message(string.format("Coverage:\t%f", M._coverage[cargo_root].coverage))
+				M._expire_notification_window(M._opts.notifications.timeout)
+			end
+			vim.schedule(function ()
 				M._clear(false)
 				local coverage = M.coverage({ file = cargo_root })
 				if not coverage then
@@ -535,9 +543,7 @@ M.run_tests = function(cargo_root)
 				end
 				M._init_signs(cargo_root)
 			end)
-		end,
-		cwd = cargo_root,
-	})
+		end)
 end
 
 ---Returns information about coverage for the given project, or the current buffer

@@ -8,7 +8,7 @@
 
 ---@class CommandOpts
 ---@field enable? boolean
----@field test_command? string
+---@field test_command? string[]
 
 ---@class Highlight
 ---@field name string
