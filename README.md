@@ -100,6 +100,7 @@ The style and functionality of Tarp can be customized to suit your needs.  Below
 		max_lines = 12,
 		max_width = 32,
 		timeout = 5000,
+		verbose = false,
 	},
 
 	diagnostics = {

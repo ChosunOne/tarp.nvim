@@ -34,6 +34,7 @@
 ---@field max_lines? integer
 ---@field max_width? integer
 ---@field timeout? integer
+---@field verbose? boolean
 
 -- see `:help tarp` for details
 ---@class TarpOpts

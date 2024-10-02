@@ -75,6 +75,7 @@ local default_opts = {
 		max_lines = 12,
 		max_width = 32,
 		timeout = 5000,
+		verbose = false,
 	},
 
 	diagnostics = {
@@ -321,6 +322,15 @@ M._create_notification_window = function ()
 	end
 end
 
+M._render_notification_text = function ()
+	vim.schedule(function ()
+		vim.api.nvim_buf_set_lines(M._notification.buf, 0, -1, true, M._notification.lines)
+		for i = 0, #M._notification.lines - 1 do
+			vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, "WarningMsg", i, 0, -1)
+		end
+	end)
+end
+
 M._update_throbber = function()
 	if not M._test_job then
 		M._notification.lines[M._opts.notifications.max_lines] = ""
@@ -330,14 +340,8 @@ M._update_throbber = function()
 	local throbber_frame_offset = #throbber[M._throbber_frame] + 1
 	local new_frame = M._notification.lines[M._opts.notifications.max_lines]:sub(1, -throbber_frame_offset) .. throbber[M._throbber_frame]
 	M._notification.lines[M._opts.notifications.max_lines] = new_frame
-
 	M._throbber_frame = (M._throbber_frame % #throbber) + 1
-	vim.schedule(function ()
-		vim.api.nvim_buf_set_lines(M._notification.buf, 0, -1, true, M._notification.lines)
-		for i = 0, #M._notification.lines - 1 do
-			vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, "WarningMsg", i, 0, -1)
-		end
-	end)
+	M._render_notification_text()
 end
 
 M._start_throbber = function (message)
@@ -373,18 +377,12 @@ end
 
 ---@param message string
 M._print_notification_message = function (message)
-	vim.schedule(function ()
-		table.insert(M._notification.lines, M._opts.notifications.max_lines - 1, message)
+	table.insert(M._notification.lines, M._opts.notifications.max_lines - 1, message)
 
-		if #M._notification.lines > M._opts.notifications.max_lines then
-			table.remove(M._notification.lines, 1)
-		end
-		vim.api.nvim_buf_set_lines(M._notification.buf, 0, -1, true, M._notification.lines)
-		for i = 0, #M._notification.lines - 1 do
-			vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, "WarningMsg", i, 0, -1)
-		end
-	end)
-
+	if #M._notification.lines > M._opts.notifications.max_lines then
+		table.remove(M._notification.lines, 1)
+	end
+	M._render_notification_text()
 end
 
 ---sets the expiration for the notification window
@@ -560,7 +558,9 @@ M.run_tests = function(cargo_root)
 			if data then
 				local lines = split_by_newline(data)
 				for _, message in ipairs(lines) do
-					M._print_notification_message(string.sub(message, 0, M._opts.notifications.max_width))
+					if M._opts.notifications.verbose then
+						M._print_notification_message(string.sub(message, 0, M._opts.notifications.max_width))
+					end
 				end
 			end
 		end

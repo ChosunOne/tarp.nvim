@@ -46,6 +46,7 @@ tarp.setup({opts})
             in the notification window.
           • timeout : The time in milliseconds for displaying notification
             messages.
+          • verbose : Whether to print all output from the `test_command`
       • diagnostics : Denotes the settings for displaying
         |diagnostic-api| information pertaining to the
         plugin 
