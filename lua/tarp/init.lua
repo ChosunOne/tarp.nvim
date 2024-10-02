@@ -215,8 +215,8 @@ M._clear = function(clear_opts)
 	if clear_opts then
 		M._opts = vim.deepcopy(default_opts, true)
 	end
+	M.hide_coverage()
 	M._coverage = {}
-	M._hidden_extmarks = {}
 	M._extmarks = {}
 	M._hidden = false
 end
