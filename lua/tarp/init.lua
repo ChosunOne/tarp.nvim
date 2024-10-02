@@ -192,11 +192,14 @@ M._init_signs = function(cargo_root)
 	end
 end
 
-M._clear = function()
-	M._opts = vim.deepcopy(default_opts, true)
+M._clear = function(clear_opts)
+	if clear_opts then
+		M._opts = vim.deepcopy(default_opts, true)
+	end
 	M._coverage = {}
 	M._hidden_extmarks = {}
 	M._extmarks = {}
+	M._hidden = false
 end
 
 ---Converts a highlight group into an extmark kind
@@ -361,13 +364,68 @@ M.setup = function(opts)
 		pattern = { "*.rs" },
 		callback = M._on_enter,
 	})
+
+	vim.api.nvim_create_user_command("TarpToggle", function()
+		M.toggle_coverage()
+	end, {
+		desc = "Toggle coverage visualization",
+	})
+
+	vim.api.nvim_create_user_command("TarpTest", function()
+		local cargo_root = M._get_cargo_root()
+		M.run_tests(cargo_root)
+	end, {
+		desc = "Run tarpaulin tests",
+	})
 end
 
-M.run_tests = function()
-	error("Not yet implemented")
+M.run_tests = function(cargo_root)
+	local bufnr = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_set_option_value("buftype", "nofile", { buf = bufnr })
+	vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = bufnr })
+	vim.api.nvim_buf_set_name(bufnr, "Cargo Tarpaulin Output")
+
+	vim.api.nvim_command("sbuffer " .. bufnr)
+
+	local function on_output(_, data)
+		if data then
+			vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, data)
+		end
+	end
+
+	vim.fn.jobstart(M._opts.commands.test_command, {
+		stdout_buffered = true,
+		stderr_buffered = true,
+		on_stdout = on_output,
+		on_stderr = on_output,
+		on_exit = function(_, exit_code)
+			vim.api.nvim_buf_set_lines(
+				bufnr,
+				-1,
+				-1,
+				false,
+				{ "", "Cargo tarpaulin finished with exit code: " .. exit_code }
+			)
+
+			vim.schedule(function()
+				M._clear(false)
+				local coverage = M.coverage({ file = cargo_root })
+				if not coverage then
+					return
+				end
+
+				M._coverage[cargo_root] = coverage
+				if not M._opts.signs.enable then
+					return
+				end
+				M._init_signs(cargo_root)
+			end)
+		end,
+		cwd = cargo_root,
+	})
 end
 
----Returns information about coverage for the given file, buffer, or project
+---Returns information about coverage for the given project, or the current buffer
 ---@param opts? CoverageOpts
 ---@return ProjectCoverage?
 M.coverage = function(opts)

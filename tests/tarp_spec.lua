@@ -25,7 +25,7 @@ end
 
 describe("tarp", function()
 	before_each(function()
-		require("tarp")._clear()
+		require("tarp")._clear(true)
 	end)
 
 	it("can be required", function()
