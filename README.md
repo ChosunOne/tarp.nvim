@@ -40,7 +40,7 @@ The style and functionality of Tarp can be customized to suit your needs.  Below
 	commands = {
 		enable = true,
         -- The command to run to generate coverage reports
-		test_command = "cargo tarpaulin",
+		test_command = { "cargo", "tarpaulin" },
 	},
 
     -- See `:help nvim_buf_set_extmark` for details
