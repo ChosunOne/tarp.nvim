@@ -95,6 +95,13 @@ The style and functionality of Tarp can be customized to suit your needs.  Below
 		},
 	},
 
+	notifications = {
+		enable = true,
+		max_lines = 12,
+		max_width = 32,
+		timeout = 5000,
+	},
+
 	diagnostics = {
 		enable = true,
 		severity = vim.diagnostic.severity.HINT,

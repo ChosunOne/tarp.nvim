@@ -70,6 +70,13 @@ local default_opts = {
 		},
 	},
 
+	notifications = {
+		enable = true,
+		max_lines = 12,
+		max_width = 32,
+		timeout = 5000,
+	},
+
 	diagnostics = {
 		enable = true,
 		severity = vim.diagnostic.severity.HINT,
@@ -86,6 +93,20 @@ M._namespace = nil
 ---@type Extmarks
 M._extmarks = {}
 M._hidden = false
+---@type NotificationWindow
+M._notification = {
+	lines = {},
+	buf = nil,
+	window = nil,
+}
+
+local split_by_newline = function (str)
+	local lines = {}
+	for line in str:gmatch("[^\r\n]+") do
+		table.insert(lines, line)
+	end
+	return lines
+end
 
 ---@class RootStart
 ---@field bufnr? integer
@@ -259,6 +280,73 @@ M._insert_extmark = function(cargo_root, file, extmark)
 	table.insert(M._extmarks[cargo_root][file], extmark)
 end
 
+M._create_notification_window = function ()
+	if M._notification.buf then
+		return
+	end
+	if M._notification.window then
+		return
+	end
+	local win_width = vim.api.nvim_win_get_width(0)
+	local win_height = vim.api.nvim_win_get_height(0)
+	local buf = vim.api.nvim_create_buf(false, true)
+
+	local opts = {
+		relative = "editor",
+		width = M._opts.notifications.max_width,
+		height = M._opts.notifications.max_lines,
+		row = win_height - M._opts.notifications.max_lines,
+		col = win_width - M._opts.notifications.max_width,
+		anchor = "NW",
+		style = "minimal",
+		focusable = false,
+		zindex = 50,
+		-- border = "single", disabled, but very useful for debugging
+	}
+
+	local win = vim.api.nvim_open_win(buf, false, opts)
+	vim.api.nvim_set_option_value("winblend", 100, { win = win })
+	vim.api.nvim_buf_add_highlight(buf, -1, "WarningMsg", 0, 0, -1)
+
+	M._notification.window = win
+	M._notification.buf = buf
+	M._notification.lines = {}
+	for _ = 1, M._opts.notifications.max_lines do
+		table.insert(M._notification.lines, "")
+	end
+end
+
+
+---@param message string
+M._print_notification_message = function (message)
+	table.insert(M._notification.lines, message)
+
+	if #M._notification.lines > M._opts.notifications.max_lines then
+		table.remove(M._notification.lines, 1)
+	end
+
+	vim.api.nvim_buf_set_lines(M._notification.buf, 0, -1, true, M._notification.lines)
+
+	for i = 0, #M._notification.lines - 1 do
+		vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, "WarningMsg", i, 0, -1)
+	end
+end
+
+---sets the expiration for the notification window
+---@param ms integer
+M._expire_notification_window = function (ms)
+	vim.defer_fn(function ()
+		vim.api.nvim_win_close(M._notification.window, true)
+		vim.api.nvim_buf_delete(M._notification.buf, {force = true})
+		M._notification.window = nil
+		M._notification.buf = nil
+		M._notification.lines = {}
+		for _ = 1, M._opts.notifications.max_lines do
+			table.insert(M._notification.lines, "")
+		end
+	end, ms)
+end
+
 -- Public API
 
 ---@param opts? TarpOpts
@@ -394,16 +482,21 @@ end
 ---Runs tests at the specified `cargo_root`
 ---@param cargo_root string
 M.run_tests = function(cargo_root)
-	local bufnr = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_set_option_value("buftype", "nofile", { buf = bufnr })
-	vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = bufnr })
-	vim.api.nvim_buf_set_name(bufnr, "Cargo Tarpaulin Output")
+	local on_output = function (_, data) end
+	if M._opts.notifications.enable then
+		M._create_notification_window()
 
-	vim.api.nvim_command("sbuffer " .. bufnr)
-
-	local function on_output(_, data)
-		if data then
-			vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, data)
+		on_output = function (_, data)
+			if data then
+				for _, large_message in ipairs(data) do
+					local lines = split_by_newline(large_message)
+					for _, message in ipairs(lines) do
+						if string.sub(message, 1, 2) == "||" then
+							M._print_notification_message(message)
+						end
+					end
+				end
+			end
 		end
 	end
 
@@ -413,15 +506,11 @@ M.run_tests = function(cargo_root)
 		on_stdout = on_output,
 		on_stderr = on_output,
 		on_exit = function(_, exit_code)
-			vim.api.nvim_buf_set_lines(
-				bufnr,
-				-1,
-				-1,
-				false,
-				{ "", "Cargo tarpaulin finished with exit code: " .. exit_code }
-			)
-
 			vim.schedule(function()
+				if M._opts.notifications.enable then
+					M._print_notification_message(string.format("Testing completed with code: %d", exit_code))
+					M._expire_notification_window(M._opts.notifications.timeout)
+				end
 				M._clear(false)
 				local coverage = M.coverage({ file = cargo_root })
 				if not coverage then

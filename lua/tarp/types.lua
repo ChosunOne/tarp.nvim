@@ -26,6 +26,12 @@
 ---@field enable? boolean
 ---@field severity? integer
 
+---@class NotificationOpts
+---@field enable? boolean
+---@field max_lines? integer
+---@field max_width? integer
+---@field timeout? integer
+
 -- see `:help tarp` for details
 ---@class TarpOpts
 ---@field enable? boolean
@@ -38,6 +44,7 @@
 ---@field commands? CommandOpts
 ---@field highlights? HighlightOpts
 ---@field diagnostics? DiagnosticOpts
+---@field notifications? NotificationOpts
 
 ---@class CoverageOpts
 ---@field file? string
@@ -91,3 +98,8 @@
 
 ---@class Extmarks
 ---@field [string] table<string, ExtmarkInfo[]>
+
+---@class NotificationWindow
+---@field window? integer
+---@field buf? integer
+---@field lines string[]

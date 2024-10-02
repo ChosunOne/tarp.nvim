@@ -37,6 +37,15 @@ tarp.setup({opts})
       • highlights : Denotes the settings for the highlight
         groups for the plugin.  See |highlight-groups| for
         details.
+      • notifications : Denotes the settings for notifications.
+        Primarily used when running |TarpTest|.
+          • enable : Whether notifications are enabled
+          • max_lines : The maximum number of lines to display
+            in the notification window.
+          • max_width : The maximum number of columns to display
+            in the notification window.
+          • timeout : The time in milliseconds for displaying notification
+            messages.
       • diagnostics : Denotes the settings for displaying
         |diagnostic-api| information pertaining to the
         plugin 
