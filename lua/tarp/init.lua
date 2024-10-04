@@ -1,3 +1,4 @@
+local notification = require("tarp.notification")
 local M = {}
 
 local ExtmarkKind = {
@@ -108,18 +109,7 @@ M._namespace = nil
 ---@type Extmarks
 M._extmarks = {}
 M._hidden = false
----@type NotificationWindow
-M._notification = {
-	lines = {},
-	buf = nil,
-	window = nil,
-}
-M._throbber_frame = 1
-M._is_throbbing = false
-M._timer = nil
-
-local throbber = { '⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏' }
-
+M._notification = notification
 
 ---Finds the first directory containing a `Cargo.toml` file, going up the file tree until it hits root.
 ---If the starting file or buffer is not specified, uses the currently active buffer.
@@ -229,8 +219,6 @@ M._clear = function(clear_opts)
 	M._extmarks = {}
 	M._hidden = false
 	M._test_job = nil
-	M._is_throbbing = nil
-	M._timer = nil
 end
 
 ---Converts a highlight group into an extmark kind
@@ -297,121 +285,6 @@ M._insert_extmark = function(cargo_root, file, extmark)
 	table.insert(M._extmarks[cargo_root][file], extmark)
 end
 
-M._create_notification_window = function ()
-	if M._notification.buf then
-		return
-	end
-	if M._notification.window then
-		return
-	end
-	local win_width = vim.api.nvim_win_get_width(0)
-	local win_height = vim.api.nvim_win_get_height(0)
-	local buf = vim.api.nvim_create_buf(false, true)
-
-	local opts = {
-		relative = "editor",
-		width = M._opts.notifications.max_width,
-		height = M._opts.notifications.max_lines,
-		row = win_height - M._opts.notifications.max_lines,
-		col = win_width - M._opts.notifications.max_width,
-		anchor = "NW",
-		style = "minimal",
-		focusable = false,
-		zindex = 50,
-		-- border = "single", disabled, but very useful for debugging
-	}
-
-	local win = vim.api.nvim_open_win(buf, false, opts)
-	vim.api.nvim_set_option_value("winblend", 100, { win = win })
-	vim.api.nvim_buf_add_highlight(buf, -1, M._opts.highlights.notifications.name, 0, 0, -1)
-
-	M._notification.window = win
-	M._notification.buf = buf
-	M._notification.lines = {}
-	for _ = 1, M._opts.notifications.max_lines do
-		table.insert(M._notification.lines, "")
-	end
-end
-
-M._render_notification_text = function ()
-	vim.schedule(function ()
-		vim.api.nvim_buf_set_lines(M._notification.buf, 0, -1, true, M._notification.lines)
-		for i = 0, #M._notification.lines - 1 do
-			vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, M._opts.highlights.notifications.name, i, 0, -1)
-			vim.api.nvim_win_set_hl_ns(M._notification.window, M._namespace)
-		end
-	end)
-end
-
-M._update_throbber = function()
-	if not M._test_job then
-		M._notification.lines[M._opts.notifications.max_lines] = ""
-		return
-	end
-
-	local throbber_frame_offset = #throbber[M._throbber_frame] + 1
-	local new_frame = M._notification.lines[M._opts.notifications.max_lines]:sub(1, -throbber_frame_offset) .. throbber[M._throbber_frame]
-	M._notification.lines[M._opts.notifications.max_lines] = new_frame
-	M._throbber_frame = (M._throbber_frame % #throbber) + 1
-	M._render_notification_text()
-end
-
-M._start_throbber = function (message)
-	if M._is_throbbing then
-		return
-	end
-
-	M._throbber_frame = 1
-
-	local line = message .. " " .. throbber[M._throbber_frame]
-	M._notification.lines[M._opts.notifications.max_lines] = line
-
-	M._timer = vim.loop.new_timer()
-	M._timer:start(0, 100, vim.schedule_wrap(M._update_throbber))
-	M._is_throbbing = true
-end
-
-M._stop_throbber = function ()
-	if not M._is_throbbing then
-		return
-	end
-
-	M._is_throbbing = false
-
-	if M._timer then
-		M._timer:stop()
-		M._timer:close()
-		M._timer = nil
-	end
-
-	M._notification.lines[M._opts.notifications.max_lines] = ""
-end
-
----@param message string
-M._print_notification_message = function (message)
-	table.insert(M._notification.lines, M._opts.notifications.max_lines - 1, message)
-
-	if #M._notification.lines > M._opts.notifications.max_lines then
-		table.remove(M._notification.lines, 1)
-	end
-	M._render_notification_text()
-end
-
----sets the expiration for the notification window
----@param ms integer
-M._expire_notification_window = function (ms)
-	vim.defer_fn(function ()
-		vim.api.nvim_win_close(M._notification.window, true)
-		vim.api.nvim_buf_delete(M._notification.buf, {force = true})
-		M._notification.window = nil
-		M._notification.buf = nil
-		M._notification.lines = {}
-		for _ = 1, M._opts.notifications.max_lines do
-			table.insert(M._notification.lines, "")
-		end
-	end, ms)
-end
-
 -- Public API
 
 ---@param opts? TarpOpts
@@ -422,18 +295,19 @@ M.setup = function(opts)
 			M._opts[key] = value
 		end
 	end
-	M._namespace = vim.api.nvim_create_namespace("")
 	if not M._opts.enable then
 		return
 	end
-	if not M._opts.highlights.enable then
-		return
+	M._namespace = vim.api.nvim_create_namespace("")
+	if M._opts.highlights.enable then
+		vim.api.nvim_set_hl(M._namespace, M._opts.highlights.covered.name, M._opts.highlights.covered.highlight)
+		vim.api.nvim_set_hl(M._namespace, M._opts.highlights.partial.name, M._opts.highlights.partial.highlight)
+		vim.api.nvim_set_hl(M._namespace, M._opts.highlights.uncovered.name, M._opts.highlights.uncovered.highlight)
+		vim.api.nvim_set_hl(M._namespace, M._opts.highlights.notifications.name, M._opts.highlights.notifications.highlight)
 	end
 
-	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.covered.name, M._opts.highlights.covered.highlight)
-	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.partial.name, M._opts.highlights.partial.highlight)
-	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.uncovered.name, M._opts.highlights.uncovered.highlight)
-	vim.api.nvim_set_hl(M._namespace, M._opts.highlights.notifications.name, M._opts.highlights.notifications.highlight)
+	M._notification.setup(M._opts.notifications, M._opts.highlights.notifications, M._namespace)
+
 	vim.api.nvim_set_hl_ns(M._namespace)
 
 	vim.api.nvim_create_user_command("TarpReload", function ()
@@ -575,15 +449,14 @@ M.run_tests = function(cargo_root)
 	end
 	local on_output = function (_, data) end
 	if M._opts.notifications.enable then
-		M._create_notification_window()
-		M._start_throbber(string.format("Running %s", table.concat(M._opts.commands.test_command, " ")))
+		M._notification.start_throbber(string.format("Running %s", table.concat(M._opts.commands.test_command, " ")))
 
 		on_output = function (_, data)
 			if data then
 				local lines = split_by_newline(data)
 				for _, message in ipairs(lines) do
 					if M._opts.notifications.verbose then
-						M._print_notification_message(string.sub(message, 0, M._opts.notifications.max_width))
+						M._notification.print_message(string.sub(message, 0, M._opts.notifications.max_width))
 					end
 				end
 			end
@@ -599,18 +472,18 @@ M.run_tests = function(cargo_root)
 			if M._opts.notifications.enable then
 				for _ = 1, M._opts.notifications.max_lines do
 					-- clear output for final result table
-					M._print_notification_message("")
+					M._notification.print_message("")
 				end
-				M._stop_throbber()
+				M._notification.stop_throbber()
 				if res.code == 0 then
-					M._print_notification_message("Testing successful ✓")
+					M._notification.print_message("Testing successful ✓")
 				else
-					M._print_notification_message("Testing failed ☓")
+					M._notification.print_message("Testing failed ☓")
 				end
-				M._print_notification_message(string.format("Covered lines:   %d", M._coverage[cargo_root].covered))
-				M._print_notification_message(string.format("Coverable lines: %d", M._coverage[cargo_root].lines))
-				M._print_notification_message(string.format("Coverage:        %f", M._coverage[cargo_root].coverage))
-				M._expire_notification_window(M._opts.notifications.timeout)
+				M._notification.print_message(string.format("Covered lines:   %d", M._coverage[cargo_root].covered))
+				M._notification.print_message(string.format("Coverable lines: %d", M._coverage[cargo_root].lines))
+				M._notification.print_message(string.format("Coverage:        %f", M._coverage[cargo_root].coverage))
+				M._notification.expire_window(M._opts.notifications.timeout)
 			end
 			vim.schedule(function ()
 				M._clear(false)
