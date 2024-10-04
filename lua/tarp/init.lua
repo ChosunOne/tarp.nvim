@@ -337,7 +337,8 @@ M._render_notification_text = function ()
 	vim.schedule(function ()
 		vim.api.nvim_buf_set_lines(M._notification.buf, 0, -1, true, M._notification.lines)
 		for i = 0, #M._notification.lines - 1 do
-			vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, "WarningMsg", i, 0, -1)
+			vim.api.nvim_buf_add_highlight(M._notification.buf, M._namespace, M._opts.highlights.notifications.name, i, 0, -1)
+			vim.api.nvim_win_set_hl_ns(M._notification.window, M._namespace)
 		end
 	end)
 end
