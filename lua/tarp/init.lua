@@ -485,6 +485,7 @@ M.run_tests = function(cargo_root)
 				M._clear(false)
 				local coverage = M.coverage({ file = cargo_root })
 				if not coverage then
+					M._notification.expire_window(M._opts.notifications.timeout)
 					return
 				end
 				M._coverage[cargo_root] = coverage
