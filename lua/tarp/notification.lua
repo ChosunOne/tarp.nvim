@@ -39,39 +39,49 @@ M._update_throbber = function()
 	M._render_text()
 end
 
-M._create_window = function()
-	if M._buf then
-		return
-	end
-	if M._window then
-		return
-	end
-	local win_width = vim.api.nvim_win_get_width(0)
-	local win_height = vim.api.nvim_win_get_height(0)
-	local buf = vim.api.nvim_create_buf(false, true)
+---Creates the notification window
+---@param message? string
+M._create_window = function(message)
+	vim.schedule(function()
+		if M._buf then
+			return
+		end
+		if M._window then
+			return
+		end
+		local win_width = vim.api.nvim_win_get_width(0)
+		local win_height = vim.api.nvim_win_get_height(0)
+		local buf = vim.api.nvim_create_buf(false, true)
 
-	local opts = {
-		relative = "editor",
-		width = M._opts.max_width,
-		height = M._opts.max_lines,
-		row = win_height - M._opts.max_lines,
-		col = win_width - M._opts.max_width,
-		anchor = "NW",
-		style = "minimal",
-		focusable = false,
-		zindex = 50,
-		-- border = "single", disabled, but very useful for debugging
-	}
+		local opts = {
+			relative = "editor",
+			width = M._opts.max_width,
+			height = M._opts.max_lines,
+			row = win_height - M._opts.max_lines,
+			col = win_width - M._opts.max_width,
+			anchor = "NW",
+			style = "minimal",
+			focusable = false,
+			zindex = 50,
+			-- border = "single", disabled, but very useful for debugging
+		}
 
-	local win = vim.api.nvim_open_win(buf, false, opts)
-	vim.api.nvim_set_option_value("winblend", 100, { win = win })
+		local win = vim.api.nvim_open_win(buf, false, opts)
+		vim.api.nvim_set_option_value("winblend", 100, { win = win })
 
-	M._window = win
-	M._buf = buf
-	M._lines = {}
-	for _ = 1, M._opts.max_lines do
-		table.insert(M._lines, "")
-	end
+		M._window = win
+		M._buf = buf
+		M._lines = {}
+		for _ = 1, M._opts.max_lines do
+			table.insert(M._lines, "")
+		end
+		if message then
+			table.insert(M._lines, message)
+		end
+		if #M._lines > M._opts.max_lines then
+			table.remove(M._lines, 1)
+		end
+	end)
 end
 
 -- Public API
@@ -94,7 +104,7 @@ end
 ---@param message string
 M.print_message = function(message)
 	if not M._window and not M._buf then
-		M._create_window()
+		M._create_window(message)
 	end
 
 	table.insert(M._lines, M._opts.max_lines - 1, message)
@@ -111,17 +121,19 @@ M.start_throbber = function(message)
 	end
 
 	if not M._window and not M._buf then
-		M._create_window()
+		M._create_window(message)
 	end
 
-	M._throbber_frame = 1
+	vim.schedule(function()
+		M._throbber_frame = 1
 
-	local line = message .. " " .. throbber[M._throbber_frame]
-	M._lines[M._opts.max_lines] = line
+		local line = M._lines[#M._lines] .. " " .. throbber[M._throbber_frame]
+		M._lines[#M._lines] = line
 
-	M._timer = vim.loop.new_timer()
-	M._timer:start(0, 100, vim.schedule_wrap(M._update_throbber))
-	M._is_throbbing = true
+		M._timer = vim.loop.new_timer()
+		M._timer:start(0, 100, vim.schedule_wrap(M._update_throbber))
+		M._is_throbbing = true
+	end)
 end
 
 M.stop_throbber = function()

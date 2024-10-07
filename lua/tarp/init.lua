@@ -80,7 +80,7 @@ local default_opts = {
 	notifications = {
 		enable = true,
 		max_lines = 12,
-		max_width = 32,
+		max_width = 36,
 		timeout = 5000,
 		verbose = false,
 	},
