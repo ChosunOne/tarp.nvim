@@ -480,10 +480,6 @@ M.run_tests = function(cargo_root)
 				else
 					M._notification.print_message("Testing failed ☓")
 				end
-				M._notification.print_message(string.format("Covered lines:   %d", M._coverage[cargo_root].covered))
-				M._notification.print_message(string.format("Coverable lines: %d", M._coverage[cargo_root].lines))
-				M._notification.print_message(string.format("Coverage:        %f", M._coverage[cargo_root].coverage))
-				M._notification.expire_window(M._opts.notifications.timeout)
 			end
 			vim.schedule(function ()
 				M._clear(false)
@@ -491,8 +487,11 @@ M.run_tests = function(cargo_root)
 				if not coverage then
 					return
 				end
-
 				M._coverage[cargo_root] = coverage
+				M._notification.print_message(string.format("Covered lines:   %d", M._coverage[cargo_root].covered))
+				M._notification.print_message(string.format("Coverable lines: %d", M._coverage[cargo_root].lines))
+				M._notification.print_message(string.format("Coverage:        %f", M._coverage[cargo_root].coverage))
+				M._notification.expire_window(M._opts.notifications.timeout)
 				if not M._opts.signs.enable then
 					return
 				end
