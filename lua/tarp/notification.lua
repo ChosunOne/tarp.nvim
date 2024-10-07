@@ -107,12 +107,14 @@ M.print_message = function(message)
 		M._create_window(message)
 	end
 
-	table.insert(M._lines, M._opts.max_lines - 1, message)
+	vim.schedule(function()
+		table.insert(M._lines, M._opts.max_lines - 1, message)
 
-	if #M._lines > M._opts.max_lines then
-		table.remove(M._lines, 1)
-	end
-	M._render_text()
+		if #M._lines > M._opts.max_lines then
+			table.remove(M._lines, 1)
+		end
+		M._render_text()
+	end)
 end
 
 M.start_throbber = function(message)
